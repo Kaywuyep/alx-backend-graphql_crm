@@ -2,6 +2,9 @@
 import graphene
 from graphene_django import DjangoObjectType
 from .models import Customer, Product, Order
+from graphene.types.decimal import Decimal as GrapheneDecimal
+from graphene_django.filter import DjangoFilterConnectionField
+from .filters import CustomerFilter, ProductFilter, OrderFilter
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
@@ -33,7 +36,8 @@ class CustomerInput(graphene.InputObjectType):
 
 class ProductInput(graphene.InputObjectType):
     name = graphene.String(required=True)
-    price = graphene.Float(required=True)
+    # price = graphene.Float(required=True)
+    price = GrapheneDecimal(required=True)  # ✅ Fix here
     stock = graphene.Int()
 
 
@@ -89,6 +93,7 @@ class CreateProduct(graphene.Mutation):
         input = ProductInput(required=True)
 
     product = graphene.Field(ProductType)
+    
 
     def mutate(self, info, input):
         if input.price <= 0:
@@ -132,19 +137,37 @@ class CreateOrder(graphene.Mutation):
 
 
 # Query placeholder
+# class Query(graphene.ObjectType):
+#     customers = graphene.List(CustomerType)
+#     products = graphene.List(ProductType)
+#     orders = graphene.List(OrderType)
+
+#     def resolve_customers(self, info):
+#         return Customer.objects.all()
+
+#     def resolve_products(self, info):
+#         return Product.objects.all()
+
+#     def resolve_orders(self, info):
+#         return Order.objects.all()
 class Query(graphene.ObjectType):
-    customers = graphene.List(CustomerType)
-    products = graphene.List(ProductType)
-    orders = graphene.List(OrderType)
+    all_customers = DjangoFilterConnectionField(
+        CustomerType, filterset_class=CustomerFilter
+        )
+    all_products = DjangoFilterConnectionField(
+        ProductType, filterset_class=ProductFilter
+        )
+    all_orders = DjangoFilterConnectionField(
+        OrderType, filterset_class=OrderFilter
+        )
 
-    def resolve_customers(self, info):
-        return Customer.objects.all()
-
-    def resolve_products(self, info):
-        return Product.objects.all()
-
-    def resolve_orders(self, info):
-        return Order.objects.all()
+    # support ordering
+    def resolve_all_products(self, info, **kwargs):
+        order_by = info.context.GET.get('order_by')
+        qs = Product.objects.all()
+        if order_by:
+            return qs.order_by(order_by)
+        return qs
 
 
 # Mutation root
