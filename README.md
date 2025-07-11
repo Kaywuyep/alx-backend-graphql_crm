@@ -23,3 +23,9 @@ pip install -r requirement.txt
 pip freeze > requirement.txt  #  to add new dependencies to the requirement.txt file
 ```
 
+<!-- Register the Cron Jobs -->
+```bash
+python manage.py crontab add
+python manage.py crontab show
+```
+

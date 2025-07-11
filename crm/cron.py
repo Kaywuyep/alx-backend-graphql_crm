@@ -36,3 +36,42 @@ def log_crm_heartbeat():
     except Exception as e:
         with open(log_file_path, 'a') as f:
             f.write(f"{timestamp} GraphQL hello error: {str(e)}\n")
+
+
+def update_low_stock():
+    timestamp = datetime.datetime.now().strftime('%d/%m/%Y-%H:%M:%S')
+    log_file_path = '/tmp/low_stock_updates_log.txt'
+
+    try:
+        transport = RequestsHTTPTransport(
+            url='http://localhost:8000/graphql/',
+            verify=True,
+            retries=3,
+        )
+
+        client = Client(transport=transport, fetch_schema_from_transport=True)
+
+        mutation = gql("""
+            mutation {
+                updateLowStockProducts {
+                    updatedProducts {
+                        name
+                        stock
+                    }
+                    message
+                }
+            }
+        """)
+
+        result = client.execute(mutation)
+        updated = result["updateLowStockProducts"]["updatedProducts"]
+        message = result["updateLowStockProducts"]["message"]
+
+        with open(log_file_path, 'a') as f:
+            f.write(f"\n[{timestamp}] {message}\n")
+            for p in updated:
+                f.write(f"- {p['name']} restocked to {p['stock']}\n")
+
+    except Exception as e:
+        with open(log_file_path, 'a') as f:
+            f.write(f"[{timestamp}] ERROR: {str(e)}\n")

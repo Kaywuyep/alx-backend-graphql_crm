@@ -15,11 +15,13 @@ import re
 class CustomerType(DjangoObjectType):
     class Meta:
         model = Customer
+        fields = "__all__"
 
 
 class ProductType(DjangoObjectType):
     class Meta:
         model = Product
+        fields = "__all__"
 
 
 class OrderType(DjangoObjectType):
@@ -136,6 +138,27 @@ class CreateOrder(graphene.Mutation):
         return CreateOrder(order=order)
 
 
+class UpdateLowStockProducts(graphene.Mutation):
+    class Arguments:
+        pass  # No arguments needed
+
+    updated_products = graphene.List(ProductType)
+    message = graphene.String()
+
+    def mutate(self, info):
+        low_stock_products = Product.objects.filter(stock__lt=10)
+        updated_products = []
+
+        for product in low_stock_products:
+            product.stock += 10
+            product.save()
+            updated_products.append(product)
+
+        return UpdateLowStockProducts(
+            updated_products=updated_products,
+            message=f"{len(updated_products)} product(s) restocked successfully."
+        )
+
 # Query placeholder
 # class Query(graphene.ObjectType):
 #     customers = graphene.List(CustomerType)
@@ -176,3 +199,4 @@ class Mutation(graphene.ObjectType):
     bulk_create_customers = BulkCreateCustomers.Field()
     create_product = CreateProduct.Field()
     create_order = CreateOrder.Field()
+    update_low_stock_products = UpdateLowStockProducts.Field()
