@@ -1,28 +1,38 @@
 import datetime
-import requests # type: ignore
+from gql.transport.requests import RequestsHTTPTransport
+from gql import gql, Client
 
 
 def log_crm_heartbeat():
-    """a cron job"""
     timestamp = datetime.datetime.now().strftime('%d/%m/%Y-%H:%M:%S')
-    log_message = f"{timestamp} CRM is alive\n"
+    log_file_path = '/tmp/crm_heartbeat_log.txt'
 
-    with open('/tmp/crm_heartbeat_log.txt', 'a') as log_file:
-        log_file.write(log_message)
+    # Log basic heartbeat
+    with open(log_file_path, 'a') as f:
+        f.write(f"{timestamp} CRM is alive\n")
 
-    # Optional: Query the GraphQL hello field
+    # Set up GraphQL client
     try:
-        response = requests.post(
-            'http://localhost:8000/graphql/',  # adjust if running on different port or domain
-            json={'query': '{ hello }'},
-            timeout=3
+        transport = RequestsHTTPTransport(
+            url='http://localhost:8000/graphql/',
+            verify=True,
+            retries=3,
         )
-        if response.ok:
-            with open('/tmp/crm_heartbeat_log.txt', 'a') as log_file:
-                log_file.write(f"{timestamp} GraphQL hello response: {response.json()}\n")
-        else:
-            with open('/tmp/crm_heartbeat_log.txt', 'a') as log_file:
-                log_file.write(f"{timestamp} GraphQL hello failed: HTTP {response.status_code}\n")
+
+        client = Client(transport=transport, fetch_schema_from_transport=True)
+
+        query = gql("""
+            query {
+                hello
+            }
+        """)
+
+        result = client.execute(query)
+        hello_response = result.get("hello", "No response")
+
+        with open(log_file_path, 'a') as f:
+            f.write(f"{timestamp} GraphQL hello response: {hello_response}\n")
+
     except Exception as e:
-        with open('/tmp/crm_heartbeat_log.txt', 'a') as log_file:
-            log_file.write(f"{timestamp} GraphQL hello exception: {str(e)}\n")
+        with open(log_file_path, 'a') as f:
+            f.write(f"{timestamp} GraphQL hello error: {str(e)}\n")
