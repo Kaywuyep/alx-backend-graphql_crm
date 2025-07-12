@@ -7,7 +7,7 @@ from gql.transport.requests import RequestsHTTPTransport
 @shared_task
 def generate_crm_report():
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_file = "/tmp/crm_report_log.txt"
+    log_file = "./tmp/crm_report_log.txt"
 
     try:
         transport = RequestsHTTPTransport(
